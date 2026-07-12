@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+IDEA.md
+
+# Local configuration and data
+.env
+*.db
+*.sqlite
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
