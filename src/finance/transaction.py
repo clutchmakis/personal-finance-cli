@@ -11,7 +11,7 @@ class Transaction:
     transaction_type: str
     amount: Decimal  # create with Decimal("number")
     category: str
-    description: str # Probably must be "description = "" "
+    description: str  # Probably must be "description = "" "
     transaction_date: date
     id: int | None = None
 
@@ -48,16 +48,15 @@ class Transaction:
 
         exponent = self.amount.as_tuple().exponent
 
-        # Check whether the exponent is a number (-2,-3...) and not a letter (n,f) and then check if it is .00 and not bigger 
+        # Check whether the exponent is a number (-2,-3...) and not a letter (n,f) and then check if it is .00 and not bigger
         if not isinstance(exponent, int):
             raise ValueError("Amount must have a valid decimal exponent")
-        
+
         if exponent < -2:
             raise ValueError("Amount cannot have more than two decimal places")
 
-
         # CATEGORY
-        # Check if category is a string the list will be create by user 
+        # Check if category is a string the list will be create by user
         if not isinstance(self.category, str):
             raise TypeError(f"{self.category} is not a string")
 
@@ -75,7 +74,7 @@ class Transaction:
 
         self.description = self.description.strip()
 
-        
+
         # DATE
         # Check the date to be a date
         if not isinstance(self.transaction_date, date):
