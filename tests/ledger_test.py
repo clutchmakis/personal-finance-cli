@@ -48,6 +48,37 @@ def test_list_transactions_preserves_addition_order():
     assert ledger.list_transactions() == [first, second]
 
 
+def test_list_transactions_orders_transactions_by_date_ascending():
+    ledger = Ledger()
+    july_thirteenth = Transaction(
+        transaction_type="income",
+        amount=Decimal("100.00"),
+        category="general",
+        description="test transaction",
+        transaction_date=date(2026, 7, 13),
+    )
+    july_first = Transaction(
+        transaction_type="expense",
+        amount=Decimal("25.00"),
+        category="general",
+        description="test transaction",
+        transaction_date=date(2026, 7, 1),
+    )
+    july_twelfth = Transaction(
+        transaction_type="expense",
+        amount=Decimal("10.00"),
+        category="general",
+        description="test transaction",
+        transaction_date=date(2026, 7, 12),
+    )
+
+    ledger.add_transaction(july_thirteenth)
+    ledger.add_transaction(july_first)
+    ledger.add_transaction(july_twelfth)
+
+    assert ledger.list_transactions() == [july_first, july_twelfth, july_thirteenth]
+
+
 def test_add_transaction_rejects_a_non_transaction_value():
     ledger = Ledger()
 

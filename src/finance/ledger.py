@@ -12,9 +12,10 @@ class Ledger:
         self.transactions.append(transaction)
 
     def list_transactions(self):
-        return self.transactions.copy()
+        arranged_list = sorted(self.transactions, key= lambda transaction: transaction.transaction_date)
+        return arranged_list
         
-
+    # Return Total expenses 
     def total_expenses(self):
         expense = Decimal("0.00")
         for transaction in self.transactions:

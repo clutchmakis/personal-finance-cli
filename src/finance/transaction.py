@@ -11,8 +11,8 @@ class Transaction:
     transaction_type: str
     amount: Decimal  # create with Decimal("number")
     category: str
-    description: str  # Probably must be "description = "" "
     transaction_date: date
+    description: str =""
     id: int | None = None
 
     def __post_init__(self) -> None:
@@ -55,6 +55,7 @@ class Transaction:
         if exponent < -2:
             raise ValueError("Amount cannot have more than two decimal places")
 
+    
         # CATEGORY
         # Check if category is a string the list will be create by user
         if not isinstance(self.category, str):
@@ -70,7 +71,7 @@ class Transaction:
         # DESCRIPTION
         # Check only if description is a string
         if not isinstance(self.description, str):
-            raise TypeError("Description is not a string")
+            raise TypeError("Description is not a string") 
 
         self.description = self.description.strip()
 

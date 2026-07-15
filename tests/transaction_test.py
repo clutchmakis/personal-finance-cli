@@ -36,6 +36,15 @@ def test_transaction_rejects_an_unknown_transaction_type():
     with pytest.raises(ValueError):
         make_transaction(transaction_type="transfer")
 
+def test_transaction_defaults_a_missing_description_to_empty_string():
+    transaction = Transaction(
+        transaction_type="income",
+        amount=Decimal("100.00"),
+        category="salary",
+        transaction_date=date(2026, 7, 13),
+    )
+
+    assert transaction.description == ""
 
 def test_transaction_rejects_a_non_string_transaction_type():
     with pytest.raises(TypeError):
