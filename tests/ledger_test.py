@@ -79,6 +79,52 @@ def test_list_transactions_orders_transactions_by_date_ascending():
     assert ledger.list_transactions() == [july_first, july_twelfth, july_thirteenth]
 
 
+def test_list_transaction_type_returns_only_requested_expenses_in_date_order():
+    ledger = Ledger()
+    later_expense = Transaction(
+        transaction_type="expense",
+        amount=Decimal("30.00"),
+        category="general",
+        transaction_date=date(2026, 7, 20),
+    )
+    income = Transaction(
+        transaction_type="income",
+        amount=Decimal("100.00"),
+        category="general",
+        transaction_date=date(2026, 7, 10),
+    )
+    earlier_expense = Transaction(
+        transaction_type="expense",
+        amount=Decimal("10.00"),
+        category="general",
+        transaction_date=date(2026, 7, 5),
+    )
+
+    ledger.add_transaction(later_expense)
+    ledger.add_transaction(income)
+    ledger.add_transaction(earlier_expense)
+
+    assert ledger.list_transaction_type("expense") == [earlier_expense, later_expense]
+
+
+def test_list_transaction_type_returns_only_requested_income_transactions():
+    ledger = Ledger()
+    expense = make_transaction("expense", "20.00")
+    income = make_transaction("income", "100.00")
+
+    ledger.add_transaction(expense)
+    ledger.add_transaction(income)
+
+    assert ledger.list_transaction_type("income") == [income]
+
+
+def test_list_transaction_type_rejects_an_unknown_type():
+    ledger = Ledger()
+
+    with pytest.raises(ValueError):
+        ledger.list_transaction_type("transfer")
+
+
 def test_add_transaction_rejects_a_non_transaction_value():
     ledger = Ledger()
 

@@ -14,7 +14,7 @@ class Transaction:
     transaction_date: date
     description: str =""
     id: int | None = None
-
+        
     def __post_init__(self) -> None:
 
         # TRANSACTION
