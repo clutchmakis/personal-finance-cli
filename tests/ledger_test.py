@@ -79,7 +79,7 @@ def test_list_transactions_orders_transactions_by_date_ascending():
     assert ledger.list_transactions() == [july_first, july_twelfth, july_thirteenth]
 
 
-def test_list_transaction_type_returns_only_requested_expenses_in_date_order():
+def test_list_transactions_filters_by_expense_type_in_date_order():
     ledger = Ledger()
     later_expense = Transaction(
         transaction_type="expense",
@@ -104,10 +104,10 @@ def test_list_transaction_type_returns_only_requested_expenses_in_date_order():
     ledger.add_transaction(income)
     ledger.add_transaction(earlier_expense)
 
-    assert ledger.list_transaction_type("expense") == [earlier_expense, later_expense]
+    assert ledger.list_transactions(transaction_type="expense") == [earlier_expense, later_expense]
 
 
-def test_list_transaction_type_returns_only_requested_income_transactions():
+def test_list_transactions_filters_by_income_type():
     ledger = Ledger()
     expense = make_transaction("expense", "20.00")
     income = make_transaction("income", "100.00")
@@ -115,14 +115,14 @@ def test_list_transaction_type_returns_only_requested_income_transactions():
     ledger.add_transaction(expense)
     ledger.add_transaction(income)
 
-    assert ledger.list_transaction_type("income") == [income]
+    assert ledger.list_transactions(transaction_type="income") == [income]
 
 
-def test_list_transaction_type_rejects_an_unknown_type():
+def test_list_transactions_rejects_an_unknown_type():
     ledger = Ledger()
 
     with pytest.raises(ValueError):
-        ledger.list_transaction_type("transfer")
+        ledger.list_transactions(transaction_type="transfer")
 
 
 def test_add_transaction_rejects_a_non_transaction_value():
@@ -145,13 +145,13 @@ def test_list_transactions_returns_a_copy_of_the_internal_list():
 def test_empty_ledger_has_zero_total_income():
     ledger = Ledger()
 
-    assert ledger.total_income() == Decimal("0.00")
+    assert Ledger.Summary(ledger).income() == Decimal("0.00")
 
 
 def test_empty_ledger_has_zero_total_expenses():
     ledger = Ledger()
 
-    assert ledger.total_expenses() == Decimal("0.00")
+    assert Ledger.Summary(ledger).expenses() == Decimal("0.00")
 
 
 def test_total_income_includes_only_income_transactions():
@@ -160,7 +160,7 @@ def test_total_income_includes_only_income_transactions():
     ledger.add_transaction(make_transaction("income", "25.50"))
     ledger.add_transaction(make_transaction("expense", "10.00"))
 
-    assert ledger.total_income() == Decimal("125.50")
+    assert Ledger.Summary(ledger).income() == Decimal("125.50")
 
 
 def test_total_expenses_includes_only_expense_transactions():
@@ -169,7 +169,7 @@ def test_total_expenses_includes_only_expense_transactions():
     ledger.add_transaction(make_transaction("expense", "10.00"))
     ledger.add_transaction(make_transaction("expense", "25.50"))
 
-    assert ledger.total_expenses() == Decimal("35.50")
+    assert Ledger.Summary(ledger).expenses() == Decimal("35.50")
 
 
 def test_balance_subtracts_total_expenses_from_total_income():
@@ -177,4 +177,161 @@ def test_balance_subtracts_total_expenses_from_total_income():
     ledger.add_transaction(make_transaction("income", "100.00"))
     ledger.add_transaction(make_transaction("expense", "25.50"))
 
-    assert ledger.balance() == Decimal("74.50")
+    assert Ledger.Summary(ledger).balance() == Decimal("74.50")
+
+
+def make_detailed_transaction(
+    transaction_type: str,
+    amount: str,
+    category: str,
+    transaction_date: date,
+) -> Transaction:
+    return Transaction(
+        transaction_type=transaction_type,
+        amount=Decimal(amount),
+        category=category,
+        description="test transaction",
+        transaction_date=transaction_date,
+    )
+
+
+def test_list_transactions_combines_type_category_and_date_filters_with_and():
+    ledger = Ledger()
+    matching_expense = make_detailed_transaction(
+        "expense", "12.50", "food", date(2026, 7, 12)
+    )
+    income_in_july = make_detailed_transaction(
+        "income", "1500.00", "salary", date(2026, 7, 1)
+    )
+    food_in_august = make_detailed_transaction(
+        "expense", "25.00", "food", date(2026, 8, 2)
+    )
+    transport_in_july = make_detailed_transaction(
+        "expense", "30.00", "transport", date(2026, 7, 13)
+    )
+
+    for transaction in (income_in_july, food_in_august, transport_in_july, matching_expense):
+        ledger.add_transaction(transaction)
+
+    assert ledger.list_transactions(
+        transaction_type="expense",
+        category="food",
+        start_date=date(2026, 7, 1),
+        end_date=date(2026, 7, 31),
+    ) == [matching_expense]
+
+
+def test_list_transactions_normalizes_the_category_filter():
+    ledger = Ledger()
+    food = make_detailed_transaction(
+        "expense", "12.50", "food", date(2026, 7, 12)
+    )
+    transport = make_detailed_transaction(
+        "expense", "30.00", "transport", date(2026, 7, 13)
+    )
+    ledger.add_transaction(transport)
+    ledger.add_transaction(food)
+
+    assert ledger.list_transactions(category=" Food ") == [food]
+
+
+def test_list_transactions_includes_both_date_range_boundaries():
+    ledger = Ledger()
+    start = make_detailed_transaction(
+        "expense", "10.00", "food", date(2026, 7, 1)
+    )
+    middle = make_detailed_transaction(
+        "expense", "12.50", "food", date(2026, 7, 12)
+    )
+    end = make_detailed_transaction(
+        "expense", "15.00", "food", date(2026, 7, 31)
+    )
+    outside = make_detailed_transaction(
+        "expense", "20.00", "food", date(2026, 8, 1)
+    )
+
+    for transaction in (outside, end, start, middle):
+        ledger.add_transaction(transaction)
+
+    assert ledger.list_transactions(
+        start_date=date(2026, 7, 1),
+        end_date=date(2026, 7, 31),
+    ) == [start, middle, end]
+
+
+def test_empty_summary_has_zero_totals_and_no_expense_categories():
+    ledger = Ledger()
+
+    summary = Ledger.Summary(ledger)
+
+    assert summary.income() == Decimal("0.00")
+    assert summary.expenses() == Decimal("0.00")
+    assert summary.balance() == Decimal("0.00")
+    assert summary.expense_categories() == []
+
+
+def test_list_transactions_with_only_start_date_includes_that_date_and_later_dates():
+    ledger = Ledger()
+    before_start = make_detailed_transaction(
+        "expense", "5.00", "food", date(2026, 6, 30)
+    )
+    start = make_detailed_transaction(
+        "expense", "10.00", "food", date(2026, 7, 1)
+    )
+    later = make_detailed_transaction(
+        "income", "100.00", "salary", date(2026, 7, 20)
+    )
+
+    for transaction in (later, before_start, start):
+        ledger.add_transaction(transaction)
+
+    assert ledger.list_transactions(start_date=date(2026, 7, 1)) == [start, later]
+
+
+def test_list_transactions_with_only_end_date_includes_that_date_and_earlier_dates():
+    ledger = Ledger()
+    earlier = make_detailed_transaction(
+        "expense", "5.00", "food", date(2026, 6, 30)
+    )
+    end = make_detailed_transaction(
+        "expense", "10.00", "food", date(2026, 7, 31)
+    )
+    after_end = make_detailed_transaction(
+        "income", "100.00", "salary", date(2026, 8, 1)
+    )
+
+    for transaction in (after_end, end, earlier):
+        ledger.add_transaction(transaction)
+
+    assert ledger.list_transactions(end_date=date(2026, 7, 31)) == [earlier, end]
+
+
+def test_list_transactions_with_only_month_returns_transactions_from_that_month():
+    ledger = Ledger()
+    june = make_detailed_transaction(
+        "expense", "5.00", "food", date(2026, 6, 30)
+    )
+    july_income = make_detailed_transaction(
+        "income", "100.00", "salary", date(2026, 7, 1)
+    )
+    july_expense = make_detailed_transaction(
+        "expense", "10.00", "food", date(2026, 7, 20)
+    )
+    august = make_detailed_transaction(
+        "expense", "15.00", "transport", date(2026, 8, 1)
+    )
+
+    for transaction in (august, july_expense, june, july_income):
+        ledger.add_transaction(transaction)
+
+    assert ledger.list_transactions(month=7) == [july_income, july_expense]
+
+
+def test_list_transactions_rejects_a_reversed_date_range():
+    ledger = Ledger()
+
+    with pytest.raises(ValueError, match="start_date cannot be after end_date"):
+        ledger.list_transactions(
+            start_date=date(2026, 7, 31),
+            end_date=date(2026, 7, 1),
+        )
