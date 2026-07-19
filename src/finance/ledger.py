@@ -1,8 +1,17 @@
+from dataclasses import dataclass
 from transaction import Transaction
 from decimal import Decimal
 from datetime import date
 
 TYPE_TRANSACTIONS =["expense","income"]
+
+@dataclass
+class Summary:
+    income: Decimal
+    expenses: Decimal
+    balance: Decimal
+    expense_categories: list[tuple[str, Decimal]]
+
 
 class Ledger:
     def __init__(self):
@@ -15,12 +24,10 @@ class Ledger:
         self.transactions.append(transaction)
 
 
-    # TODO:  implement all this functions of the list, inside the list_transactions method
 
     def list_transactions(
         self,
         transaction_type: str | None = None,
-        amount_bool : bool | None = None,
         category : str | None = None,
         month : int | None = None,
         start_date : date | None = None,
@@ -43,11 +50,8 @@ class Ledger:
                     caller_list.append(transaction)
             flag = 1
 
-        # 2nd filter
-        if amount_bool:
-            caller_list = sorted(caller_list, key = lambda transaction: transaction.amount, reverse = True)
 
-        # 3rd
+        # 2rd
         if category or month :
 
             if category:
@@ -89,7 +93,7 @@ class Ledger:
                     if transaction.category == category and transaction.transaction_date.month  == month:
                         caller_list.append(transaction)
 
-        # 4th
+        # 3th
         if start_date or end_date :
             if start_date is not None and not isinstance(start_date, date):
                 raise TypeError("start_date must be a date or None")
@@ -132,86 +136,92 @@ class Ledger:
 
 
         # In case list_transactions takes no argument
-        if not transaction_type and not amount_bool and not category and not month and not start_date and not end_date:
+        if not transaction_type  and not category and not month and not start_date and not end_date:
             caller_list = arranged_list.copy()
 
         return caller_list
 
-
-
-
-    class Summary:
-        def __init__(self, ledger: "Ledger", month: int |None = None) :
-            self.ledger = ledger
-            self.month = month
-
-        def __post_init__(self):
-            if self.month :
-                if self.month <= 0 or self.month > 12 :
-                    raise ValueError("Int of month must be between 1-12")
-
-        def income(self) -> Decimal:
-            income = Decimal("0.00")
-
-            if self.month :
-                for transaction in self.ledger.transactions:
-                    if self.month == transaction.transaction_date.month :
-                        if transaction.transaction_type == "income":
-                            income += transaction.amount
-
-            else:
-                for transaction in self.ledger.transactions:
+    def summary(self, month:str | None = None ) :
+        income = Decimal("0.00")
+        expense = Decimal("0.00")
+        expense_categories : dict[str, Decimal] = {}
+        
+        selected_year = None
+        selected_month = None
+        
+        if month is not None:
+            try:
+                selected_date = date.fromisoformat(f"{month}-01")
+            except (TypeError, ValueError) as error:
+                raise ValueError("Month must be in YYYY-MM format") from error
+        
+            if selected_date.strftime("%Y-%m") != month:
+                raise ValueError("Month must be in YYYY-MM format")
+        
+            selected_year = selected_date.year
+            selected_month = selected_date.month
+        
+        # For income 
+        if selected_month :
+            for transaction in self.transactions:
+                if selected_month == transaction.transaction_date.month and selected_year == transaction.transaction_date.year:
                     if transaction.transaction_type == "income":
                         income += transaction.amount
 
-            return income
+        else:
+            for transaction in self.transactions:
+                if transaction.transaction_type == "income":
+                    income += transaction.amount
 
-        def expenses(self) -> Decimal:
-            expense = Decimal("0.00")
+        # For expenses 
+        expense = Decimal("0.00")
 
-            if self.month :
-                for transaction in self.ledger.transactions:
-                    if self.month == transaction.transaction_date.month :
-                        if transaction.transaction_type == "expense":
-                            expense += transaction.amount
-
-            else :
-                for transaction in self.ledger.transactions:
+        if selected_month :
+            for transaction in self.transactions:
+                if selected_month == transaction.transaction_date.month and selected_year == transaction.transaction_date.year:
                     if transaction.transaction_type == "expense":
                         expense += transaction.amount
 
-            return expense
+        else :
+            for transaction in self.transactions:
+                if transaction.transaction_type == "expense":
+                    expense += transaction.amount
 
-        def balance(self) -> Decimal:
-            return self.income() - self.expenses()
+        # For balance 
+        balance = income - expense 
 
 
-        def expense_categories(self) -> list:
-            amount_by_category = {}
+        # For expense Categories 
+        if selected_month:
+            for transaction in self.transactions:
+                if transaction.transaction_type == "expense" and transaction.transaction_date.month == selected_month and transaction.transaction_date.year == selected_year :
+                    # Creating the category if it does not exist, current total will have the value of the corresponding category (e.g. food)
+                    current_total = expense_categories.get(transaction.category,Decimal("0.00"))
 
-            if self.month:
-                for transaction in self.ledger.transactions:
-                    if transaction.transaction_type == "expense" and transaction.transaction_date.month == self.month :
-                        # Creating the category if it does not exist, current total will have the value of the corresponding category (e.g. food)
-                        current_total = amount_by_category.get(transaction.category,Decimal("0.00"))
+                    # Add the new amount of the last transaction
+                    new_total = current_total + transaction.amount
 
-                        # Add the new amount of the last transaction
-                        new_total = current_total + transaction.amount
+                    # And then put it in the dictionary
+                    expense_categories[transaction.category] = new_total
 
-                        # And then put it in the dictionary
-                        amount_by_category[transaction.category] = new_total
+        else :
+            for transaction in self.transactions:
+                if transaction.transaction_type == "expense"  :
+                    # Creating the category if it does not exist, current total will have the value of the corresponding category (e.g. food)
+                    current_total = expense_categories.get(transaction.category,Decimal("0.00"))
 
-            else :
-                for transaction in self.ledger.transactions:
-                    if transaction.transaction_type == "expense"  :
-                        # Creating the category if it does not exist, current total will have the value of the corresponding category (e.g. food)
-                        current_total = amount_by_category.get(transaction.category,Decimal("0.00"))
+                    # Add the new amount of the last transaction
+                    new_total = current_total + transaction.amount
 
-                        # Add the new amount of the last transaction
-                        new_total = current_total + transaction.amount
+                    # And then put it in the dictionary
+                    expense_categories[transaction.category] = new_total
 
-                        # And then put it in the dictionary
-                        amount_by_category[transaction.category] = new_total
+        ordered_categories = list(sorted(expense_categories.items(), key = lambda item : (-item[1], item[0]),))
+        return Summary(income,expense,balance,ordered_categories)
 
-            
-            return list(sorted(amount_by_category.items(),key = lambda item: (-item[1],item[0])))
+        
+        
+
+
+
+

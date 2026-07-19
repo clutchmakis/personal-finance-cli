@@ -145,13 +145,13 @@ def test_list_transactions_returns_a_copy_of_the_internal_list():
 def test_empty_ledger_has_zero_total_income():
     ledger = Ledger()
 
-    assert Ledger.Summary(ledger).income() == Decimal("0.00")
+    assert ledger.summary().income == Decimal("0.00")
 
 
 def test_empty_ledger_has_zero_total_expenses():
     ledger = Ledger()
 
-    assert Ledger.Summary(ledger).expenses() == Decimal("0.00")
+    assert ledger.summary().expenses == Decimal("0.00")
 
 
 def test_total_income_includes_only_income_transactions():
@@ -160,7 +160,7 @@ def test_total_income_includes_only_income_transactions():
     ledger.add_transaction(make_transaction("income", "25.50"))
     ledger.add_transaction(make_transaction("expense", "10.00"))
 
-    assert Ledger.Summary(ledger).income() == Decimal("125.50")
+    assert ledger.summary().income == Decimal("125.50")
 
 
 def test_total_expenses_includes_only_expense_transactions():
@@ -169,7 +169,7 @@ def test_total_expenses_includes_only_expense_transactions():
     ledger.add_transaction(make_transaction("expense", "10.00"))
     ledger.add_transaction(make_transaction("expense", "25.50"))
 
-    assert Ledger.Summary(ledger).expenses() == Decimal("35.50")
+    assert ledger.summary().expenses == Decimal("35.50")
 
 
 def test_balance_subtracts_total_expenses_from_total_income():
@@ -177,7 +177,7 @@ def test_balance_subtracts_total_expenses_from_total_income():
     ledger.add_transaction(make_transaction("income", "100.00"))
     ledger.add_transaction(make_transaction("expense", "25.50"))
 
-    assert Ledger.Summary(ledger).balance() == Decimal("74.50")
+    assert ledger.summary().balance == Decimal("74.50")
 
 
 def make_detailed_transaction(
@@ -262,12 +262,12 @@ def test_list_transactions_includes_both_date_range_boundaries():
 def test_empty_summary_has_zero_totals_and_no_expense_categories():
     ledger = Ledger()
 
-    summary = Ledger.Summary(ledger)
+    summary = ledger.summary()
 
-    assert summary.income() == Decimal("0.00")
-    assert summary.expenses() == Decimal("0.00")
-    assert summary.balance() == Decimal("0.00")
-    assert summary.expense_categories() == []
+    assert summary.income == Decimal("0.00")
+    assert summary.expenses == Decimal("0.00")
+    assert summary.balance == Decimal("0.00")
+    assert summary.expense_categories == []
 
 
 def test_list_transactions_with_only_start_date_includes_that_date_and_later_dates():
@@ -335,3 +335,118 @@ def test_list_transactions_rejects_a_reversed_date_range():
             start_date=date(2026, 7, 31),
             end_date=date(2026, 7, 1),
         )
+
+
+def test_ledger_summary_on_an_empty_ledger_returns_a_finished_summary_value():
+    ledger = Ledger()
+
+    summary = ledger.summary()
+
+    assert summary.income == Decimal("0.00")
+    assert summary.expenses == Decimal("0.00")
+    assert summary.balance == Decimal("0.00")
+    assert summary.expense_categories == []
+
+
+def test_monthly_summary_includes_only_the_requested_year_and_month():
+    ledger = Ledger()
+    july_income = make_detailed_transaction(
+        "income", "1500.00", "salary", date(2026, 7, 1)
+    )
+    july_expense = make_detailed_transaction(
+        "expense", "12.50", "food", date(2026, 7, 12)
+    )
+    august_expense = make_detailed_transaction(
+        "expense", "40.00", "food", date(2026, 8, 2)
+    )
+    previous_year_july_expense = make_detailed_transaction(
+        "expense", "50.00", "food", date(2025, 7, 12)
+    )
+
+    for transaction in (
+        july_income,
+        july_expense,
+        august_expense,
+        previous_year_july_expense,
+    ):
+        ledger.add_transaction(transaction)
+
+    summary = ledger.summary(month="2026-07")
+
+    assert summary.income == Decimal("1500.00")
+    assert summary.expenses == Decimal("12.50")
+    assert summary.balance == Decimal("1487.50")
+
+
+@pytest.mark.parametrize("month", ["2026-7", "2026-00", "2026-13", "hello"])
+def test_summary_rejects_an_invalid_month_format(month):
+    ledger = Ledger()
+
+    with pytest.raises(ValueError, match="Month must be in YYYY-MM format"):
+        ledger.summary(month=month)
+
+
+def test_summary_groups_expenses_and_orders_categories_by_total_then_name():
+    ledger = Ledger()
+    transport = make_detailed_transaction(
+        "expense", "30.00", "transport", date(2026, 7, 1)
+    )
+    food_first = make_detailed_transaction(
+        "expense", "12.50", "food", date(2026, 7, 2)
+    )
+    food_second = make_detailed_transaction(
+        "expense", "7.50", "food", date(2026, 7, 3)
+    )
+    utilities = make_detailed_transaction(
+        "expense", "20.00", "utilities", date(2026, 7, 4)
+    )
+    salary = make_detailed_transaction(
+        "income", "100.00", "salary", date(2026, 7, 5)
+    )
+
+    for transaction in (salary, food_first, utilities, transport, food_second):
+        ledger.add_transaction(transaction)
+
+    assert ledger.summary().expense_categories == [
+        ("transport", Decimal("30.00")),
+        ("food", Decimal("20.00")),
+        ("utilities", Decimal("20.00")),
+    ]
+
+
+def test_filtered_listing_does_not_change_the_transactions_stored_in_the_ledger():
+    ledger = Ledger()
+    food = make_detailed_transaction(
+        "expense", "12.50", "food", date(2026, 7, 1)
+    )
+    transport = make_detailed_transaction(
+        "expense", "30.00", "transport", date(2026, 7, 2)
+    )
+    salary = make_detailed_transaction(
+        "income", "1500.00", "salary", date(2026, 7, 3)
+    )
+
+    for transaction in (food, transport, salary):
+        ledger.add_transaction(transaction)
+
+    assert ledger.list_transactions(category="food") == [food]
+    assert ledger.list_transactions() == [food, transport, salary]
+
+
+def test_summary_without_a_month_includes_transactions_from_every_month():
+    ledger = Ledger()
+    june_income = make_detailed_transaction(
+        "income", "100.00", "salary", date(2026, 6, 30)
+    )
+    august_expense = make_detailed_transaction(
+        "expense", "25.00", "food", date(2026, 8, 1)
+    )
+
+    ledger.add_transaction(june_income)
+    ledger.add_transaction(august_expense)
+
+    summary = ledger.summary()
+
+    assert summary.income == Decimal("100.00")
+    assert summary.expenses == Decimal("25.00")
+    assert summary.balance == Decimal("75.00")
