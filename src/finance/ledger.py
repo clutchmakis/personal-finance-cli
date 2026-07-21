@@ -29,7 +29,6 @@ class Ledger:
         self,
         transaction_type: str | None = None,
         category : str | None = None,
-        month : int | None = None,
         start_date : date | None = None,
         end_date : date | None = None,
     ) -> list[Transaction]:
@@ -52,18 +51,12 @@ class Ledger:
 
 
         # 2rd
-        if category or month :
+        if category is not None :
 
             if category:
                 category = category.strip().lower()
 
-            if month is not None :
-                if not isinstance(month, int) :
-                    raise TypeError("Month in not a number ")
-
-                elif month <1 or month > 12 :
-                    raise ValueError("Month must be between 1-12 ")
-
+            
             if category == "" :
                 raise ValueError("Category name invalid")
 
@@ -75,23 +68,11 @@ class Ledger:
                 flag = 1
                 
             for transaction in arranged_list:
-                if month is None:
-                    if transaction.category != category and month :
-                        continue
-                # 1st option
-                
-                    if transaction.category == category  :
-                        caller_list.append(transaction)
-
-                # 2nd option
-                elif category is None:
-                    if transaction.transaction_date.month  == month  :
-                        caller_list.append(transaction)
-
-                # 3rd option
-                else :
-                    if transaction.category == category and transaction.transaction_date.month  == month:
-                        caller_list.append(transaction)
+                if transaction.category != category :
+                    continue
+            # 1st option
+            
+                caller_list.append(transaction)
 
         # 3th
         if start_date or end_date :
@@ -136,7 +117,7 @@ class Ledger:
 
 
         # In case list_transactions takes no argument
-        if not transaction_type  and not category and not month and not start_date and not end_date:
+        if not transaction_type  and not category and not start_date and not end_date:
             caller_list = arranged_list.copy()
 
         return caller_list

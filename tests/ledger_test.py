@@ -306,25 +306,6 @@ def test_list_transactions_with_only_end_date_includes_that_date_and_earlier_dat
     assert ledger.list_transactions(end_date=date(2026, 7, 31)) == [earlier, end]
 
 
-def test_list_transactions_with_only_month_returns_transactions_from_that_month():
-    ledger = Ledger()
-    june = make_detailed_transaction(
-        "expense", "5.00", "food", date(2026, 6, 30)
-    )
-    july_income = make_detailed_transaction(
-        "income", "100.00", "salary", date(2026, 7, 1)
-    )
-    july_expense = make_detailed_transaction(
-        "expense", "10.00", "food", date(2026, 7, 20)
-    )
-    august = make_detailed_transaction(
-        "expense", "15.00", "transport", date(2026, 8, 1)
-    )
-
-    for transaction in (august, july_expense, june, july_income):
-        ledger.add_transaction(transaction)
-
-    assert ledger.list_transactions(month=7) == [july_income, july_expense]
 
 
 def test_list_transactions_rejects_a_reversed_date_range():
