@@ -56,22 +56,22 @@ class Ledger:
             if category:
                 category = category.strip().lower()
 
-            
+
             if category == "" :
                 raise ValueError("Category name invalid")
 
-            # This is the AND if flag = 1 then the caller_list is not empty 
+            # This is the AND if flag = 1 then the caller_list is not empty
             if flag == 1 :
                 arranged_list = caller_list.copy()
                 caller_list =[]
             else :
                 flag = 1
-                
+
             for transaction in arranged_list:
                 if transaction.category != category :
                     continue
             # 1st option
-            
+
                 caller_list.append(transaction)
 
         # 3th
@@ -122,27 +122,27 @@ class Ledger:
 
         return caller_list
 
-    def summary(self, month:str | None = None ) :
+    def summary(self, month:str | None = None ) -> Summary :
         income = Decimal("0.00")
         expense = Decimal("0.00")
         expense_categories : dict[str, Decimal] = {}
-        
+
         selected_year = None
         selected_month = None
-        
+
         if month is not None:
             try:
                 selected_date = date.fromisoformat(f"{month}-01")
             except (TypeError, ValueError) as error:
                 raise ValueError("Month must be in YYYY-MM format") from error
-        
+
             if selected_date.strftime("%Y-%m") != month:
                 raise ValueError("Month must be in YYYY-MM format")
-        
+
             selected_year = selected_date.year
             selected_month = selected_date.month
-        
-        # For income 
+
+        # For income
         if selected_month :
             for transaction in self.transactions:
                 if selected_month == transaction.transaction_date.month and selected_year == transaction.transaction_date.year:
@@ -154,7 +154,7 @@ class Ledger:
                 if transaction.transaction_type == "income":
                     income += transaction.amount
 
-        # For expenses 
+        # For expenses
         expense = Decimal("0.00")
 
         if selected_month :
@@ -168,11 +168,11 @@ class Ledger:
                 if transaction.transaction_type == "expense":
                     expense += transaction.amount
 
-        # For balance 
-        balance = income - expense 
+        # For balance
+        balance = income - expense
 
 
-        # For expense Categories 
+        # For expense Categories
         if selected_month:
             for transaction in self.transactions:
                 if transaction.transaction_type == "expense" and transaction.transaction_date.month == selected_month and transaction.transaction_date.year == selected_year :
@@ -199,10 +199,3 @@ class Ledger:
 
         ordered_categories = list(sorted(expense_categories.items(), key = lambda item : (-item[1], item[0]),))
         return Summary(income,expense,balance,ordered_categories)
-
-        
-        
-
-
-
-

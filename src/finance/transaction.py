@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-TRANSACTION_TYPES = ("expense", "income")
+TYPES_TRANSACTION = ("expense", "income")
 
 
 @dataclass
@@ -29,7 +29,7 @@ class Transaction:
         self.transaction_type = self.transaction_type.strip().lower()
 
         # Check if the transaction is either Expence or Income type
-        if self.transaction_type not in TRANSACTION_TYPES:
+        if self.transaction_type not in TYPES_TRANSACTION:
             raise ValueError(f"{self.transaction_type} is not Expense or Income")
 
 
