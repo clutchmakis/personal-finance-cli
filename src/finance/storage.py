@@ -2,12 +2,15 @@ import sqlite3
 from decimal import Decimal
 from transaction import Transaction
 from datetime import date 
+from pathlib import Path
 
 TYPES_TRANSACTION = ("expense", "income")
 
 class SQLiteStorage:
     def __init__(self, database_path: str, ):
-        self.database_path = database_path
+        # Create the folders and the database 
+        self.database_path = Path(database_path)
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
 
 
         conn = sqlite3.connect(self.database_path)

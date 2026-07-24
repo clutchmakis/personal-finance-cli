@@ -132,3 +132,12 @@ def test_storage_filters_to_end_date_inclusively(tmp_path):
     storage.save(make_transaction(transaction_date=date(2026, 8, 1)))
 
     assert storage.list_transactions(end_date=date(2026, 7, 31)) == [earlier, end]
+
+
+def test_storage_creates_missing_parent_directories(tmp_path):
+    database_path = tmp_path / "nested" / "data" / "finance.db"
+
+    storage = SQLiteStorage(database_path)
+
+    assert database_path.exists()
+    assert storage.list_transactions() == []
