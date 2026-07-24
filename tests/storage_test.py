@@ -82,3 +82,53 @@ def test_storage_filters_with_and_and_orders_by_date_then_id(tmp_path):
         start_date=date(2026, 7, 1),
         end_date=date(2026, 7, 31),
     ) == [matching_first, matching_second]
+
+
+
+def test_storage_lists_transactions_by_date_then_id(tmp_path):
+    storage = SQLiteStorage(tmp_path / "finance.db")
+    later = storage.save(make_transaction(transaction_date=date(2026, 7, 13)))
+    same_day_first = storage.save(make_transaction(transaction_date=date(2026, 7, 12)))
+    earlier = storage.save(make_transaction(transaction_date=date(2026, 7, 1)))
+    same_day_second = storage.save(make_transaction(transaction_date=date(2026, 7, 12)))
+
+    assert storage.list_transactions() == [
+        earlier,
+        same_day_first,
+        same_day_second,
+        later,
+    ]
+
+
+def test_storage_filters_by_transaction_type(tmp_path):
+    storage = SQLiteStorage(tmp_path / "finance.db")
+    income = storage.save(make_transaction(transaction_type="income", category="salary"))
+    storage.save(make_transaction(transaction_type="expense", category="food"))
+
+    assert storage.list_transactions(transaction_type="income") == [income]
+
+
+def test_storage_filters_by_normalized_category(tmp_path):
+    storage = SQLiteStorage(tmp_path / "finance.db")
+    food = storage.save(make_transaction(category="food"))
+    storage.save(make_transaction(category="transport"))
+
+    assert storage.list_transactions(category=" Food ") == [food]
+
+
+def test_storage_filters_from_start_date_inclusively(tmp_path):
+    storage = SQLiteStorage(tmp_path / "finance.db")
+    storage.save(make_transaction(transaction_date=date(2026, 6, 30)))
+    start = storage.save(make_transaction(transaction_date=date(2026, 7, 1)))
+    later = storage.save(make_transaction(transaction_date=date(2026, 7, 2)))
+
+    assert storage.list_transactions(start_date=date(2026, 7, 1)) == [start, later]
+
+
+def test_storage_filters_to_end_date_inclusively(tmp_path):
+    storage = SQLiteStorage(tmp_path / "finance.db")
+    earlier = storage.save(make_transaction(transaction_date=date(2026, 7, 1)))
+    end = storage.save(make_transaction(transaction_date=date(2026, 7, 31)))
+    storage.save(make_transaction(transaction_date=date(2026, 8, 1)))
+
+    assert storage.list_transactions(end_date=date(2026, 7, 31)) == [earlier, end]
