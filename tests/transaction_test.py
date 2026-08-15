@@ -5,10 +5,10 @@ import sys
 
 import pytest
 
-SRC_FINANCE = Path(__file__).parents[1] / "src" / "finance"
-sys.path.insert(0, str(SRC_FINANCE))
+SRC_DIRECTORY = Path(__file__).parents[1] / "src"
+sys.path.insert(0, str(SRC_DIRECTORY))
 
-from transaction import Transaction
+from finance.transaction import Transaction
 
 
 def make_transaction(**overrides) -> Transaction:

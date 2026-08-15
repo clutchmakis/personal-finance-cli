@@ -5,12 +5,12 @@ import sys
 
 import pytest
 
-SRC_FINANCE = Path(__file__).parents[1] / "src" / "finance"
-sys.path.insert(0, str(SRC_FINANCE))
+SRC_DIRECTORY = Path(__file__).parents[1] / "src"
+sys.path.insert(0, str(SRC_DIRECTORY))
 
-from ledger import Ledger
-from storage import SQLiteStorage
-from transaction import Transaction
+from finance.ledger import Ledger
+from finance.storage import SQLiteStorage
+from finance.transaction import Transaction
 
 
 def make_ledger(tmp_path) -> Ledger:

@@ -1,6 +1,6 @@
 import sqlite3
 from decimal import Decimal
-from transaction import Transaction
+from .transaction import Transaction
 from datetime import date 
 from pathlib import Path
 
@@ -17,7 +17,7 @@ class SQLiteStorage:
         cursor = conn.cursor()
 
         # Create transaction table
-        cursor.execute("""CREATE TABLE IF NOT EXISTS transactions(
+        _=cursor.execute("""CREATE TABLE IF NOT EXISTS transactions(
             id INTEGER PRIMARY KEY,
             transaction_type TEXT NOT NULL CHECK (transaction_type IN('income', 'expense')),
             amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
@@ -35,7 +35,7 @@ class SQLiteStorage:
         conn = sqlite3.connect(self.database_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        _=cursor.execute("""
             INSERT INTO transactions(
             transaction_type,
             amount_cents,
