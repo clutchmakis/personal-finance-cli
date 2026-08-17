@@ -67,3 +67,21 @@ def test_add_command_saves_a_transaction_and_prints_a_success_message(tmp_path):
             date(2026, 7, 1),
         )
     ]
+
+
+def test_add_command_rejects_invalid_amount_without_traceback_or_saving(tmp_path):
+    database_path = tmp_path / "finance.db"
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "add",
+        "income",
+        "not-a-number",
+        "salary",
+    )
+
+    assert result.returncode != 0
+    assert "Traceback" not in result.stderr
+    assert "amount must be a valid decimal number" in result.stderr.lower()
+    assert SQLiteStorage(database_path).list_transactions() == []
