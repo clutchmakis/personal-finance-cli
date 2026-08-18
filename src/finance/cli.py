@@ -87,4 +87,4 @@ def main() -> None:
     ledger = Ledger(storage)
     saved_transaction = ledger.add_transaction(new_transaction)
 
-    print(f'Added {saved_transaction.transaction_type} #{saved_transaction.id}: €{saved_transaction.amount} in {saved_transaction.category} on {saved_transaction.transaction_date}.')
+    print(f'Added {saved_transaction.transaction_type} #{saved_transaction.id}: €{format(saved_transaction.amount,".2f")} in {saved_transaction.category} on {saved_transaction.transaction_date}.')
