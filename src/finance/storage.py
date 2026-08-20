@@ -1,8 +1,9 @@
 import sqlite3
 from decimal import Decimal
-from .transaction import Transaction
 from datetime import date 
 from pathlib import Path
+
+from .transaction import Transaction
 
 TYPES_TRANSACTION = ("expense", "income")
 

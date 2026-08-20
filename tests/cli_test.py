@@ -1,9 +1,9 @@
 import os
-from datetime import date
-from decimal import Decimal
-from pathlib import Path
 import subprocess
 import sys
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[1]
 SRC_DIRECTORY = PROJECT_ROOT / "src"
@@ -25,6 +25,7 @@ def run_finance(*arguments: str) -> subprocess.CompletedProcess[str]:
         env=environment,
         text=True,
         capture_output=True,
+        check = False,
     )
 
 
