@@ -8,8 +8,24 @@ from argparse import ArgumentParser, Namespace
 
 
 
-def list_command(ledger: Ledger) -> None:
-    transaction_list = ledger.list_transactions()
+def list_command(args: Namespace, ledger: Ledger) -> None:
+    if args.start_date:
+        start_date = date.fromisoformat(args.start_date)
+    else:
+        start_date = None
+
+    if args.end_date:
+        end_date = date.fromisoformat(args.end_date)
+    else:
+        end_date = None
+
+    transaction_list = ledger.list_transactions(
+        transaction_type=args.type,
+        category=args.category,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
     print(format_transaction_table(transaction_list))
 
 def add_command(args : Namespace, ledger: Ledger) -> None:
@@ -53,7 +69,6 @@ def add_command(args : Namespace, ledger: Ledger) -> None:
 def main() -> None:
 
     parser = ArgumentParser()
-
     _ = parser.add_argument(
             '-d',
             '--database',
@@ -89,6 +104,26 @@ def main() -> None:
                 help = 'Date of transaction',
         )
 
+    _ = list_parser.add_argument(
+        '--type',
+        help='List transactions based on type',
+    )
+
+    _ = list_parser.add_argument(
+        '--category',
+        help='List transactions based on category',
+    )
+
+    _ = list_parser.add_argument(
+        '--start-date',
+        help='List transactions from that day',
+    )
+
+    _ = list_parser.add_argument(
+        '--end-date',
+        help='List transactions until that day',
+    )
+
     args : Namespace = parser.parse_args()
     ledger = Ledger(SQLiteStorage(args.database))
 
@@ -96,6 +131,6 @@ def main() -> None:
         if args.command == "add":
             add_command(args, ledger)
         elif args.command == "list":
-            list_command(ledger)
+            list_command(args, ledger)
     except ValueError as error:
         parser.error(str(error))
