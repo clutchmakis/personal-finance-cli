@@ -1,15 +1,17 @@
 import os
-import subprocess
 import sys
-from datetime import UTC, date, datetime
-from decimal import Decimal
+import subprocess
 from pathlib import Path
+from decimal import Decimal
+from datetime import UTC, date
 
 PROJECT_ROOT = Path(__file__).parents[1]
 SRC_DIRECTORY = PROJECT_ROOT / "src"
 sys.path.insert(0, str(SRC_DIRECTORY))
 
 from finance.storage import SQLiteStorage
+from finance.transaction import Transaction
+
 
 
 def run_finance(*arguments: str) -> subprocess.CompletedProcess[str]:
@@ -251,3 +253,57 @@ def test_add_command_prints_a_whole_number_amount_with_two_decimal_places(tmp_pa
     assert result.returncode == 0
     assert result.stderr == ""
     assert result.stdout == "Added income #1: €83.00 in food on 2026-07-01.\n"
+
+def test_list_command_prints_message_for_empty_database(tmp_path):
+    database_path = tmp_path / "finance.db"
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "list"
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == "No transactions found.\n"
+
+def test_list_command_prints_two_transactions_in_chronological_order(tmp_path):
+    database_path = tmp_path / "finance.db"
+    storage = SQLiteStorage(database_path)
+
+    later_transaction = Transaction(
+        transaction_type="income",
+        amount=Decimal("6133.43"),
+        category="salary",
+        description="monthly salary",
+        transaction_date=date(2026, 7, 10),
+    )
+    earlier_transaction = Transaction(
+        transaction_type="income",
+        amount=Decimal("69.3"),
+        category="salary",
+        description="monthly salary",
+        transaction_date=date(2026, 7, 2),
+    )
+
+    storage.save(later_transaction)
+    storage.save(earlier_transaction)
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "list",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+
+    lines = result.stdout.splitlines()
+
+    assert lines[0] == (
+        " ID | DATE       | TYPE    |     AMOUNT | CATEGORY     | DESCRIPTION"
+    )
+    assert lines[1].startswith("  2 | 2026-07-02 |")
+    assert "€69.30" in lines[1]
+    assert lines[2].startswith("  1 | 2026-07-10 |")
+    assert "€6133.43" in lines[2]

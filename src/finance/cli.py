@@ -1,11 +1,53 @@
-from argparse import ArgumentParser, Namespace
 from datetime import date
-from decimal import Decimal, InvalidOperation
-
-from .transaction import Transaction
 from .ledger import Ledger
 from .storage import SQLiteStorage
+from .transaction import Transaction
+from .reporting import format_transaction_table
+from decimal import Decimal, InvalidOperation
+from argparse import ArgumentParser, Namespace
 
+
+
+def list_command(ledger: Ledger) -> None:
+    transaction_list = ledger.list_transactions()
+    print(format_transaction_table(transaction_list))
+
+def add_command(args : Namespace, ledger: Ledger) -> None:
+
+    transaction_type = args.transaction_type
+
+    # Check if the amount is type Decimal
+    try:
+        amount = Decimal(args.amount)
+    except InvalidOperation as error:
+        raise ValueError("Amount must be a valid decimal number") from error
+
+    category = args.category
+    description = args.description
+
+    # Check the date to be a date
+    if args.date:
+        try:
+            transaction_date = date.fromisoformat(args.date)
+        except ValueError as error:
+            raise ValueError(
+                "Date must use YYYY-MM-DD format"
+            ) from error
+    else:
+        transaction_date = date.today()
+
+    # Create the transaction
+    new_transaction = Transaction(
+        transaction_type=transaction_type,
+        amount=amount,
+        category=category,
+        transaction_date=transaction_date,
+        description=description,
+    )
+
+    saved_transaction = ledger.add_transaction(new_transaction)
+
+    print(f'Added {saved_transaction.transaction_type} #{saved_transaction.id}: €{format(saved_transaction.amount,".2f")} in {saved_transaction.category} on {saved_transaction.transaction_date}.')
 
 
 def main() -> None:
@@ -21,6 +63,7 @@ def main() -> None:
 
     subparsers = parser.add_subparsers(dest ="command", required = True )
     add_parser = subparsers.add_parser("add")
+    list_parser = subparsers.add_parser("list")
 
     # Create the arguments, the "_=" removes the warnings of something getting returned and not use it
     _ = add_parser.add_argument(
@@ -46,45 +89,13 @@ def main() -> None:
                 help = 'Date of transaction',
         )
 
-    # pass the values in the args
     args : Namespace = parser.parse_args()
+    ledger = Ledger(SQLiteStorage(args.database))
 
-    database = args.database
-    transaction_type = args.transaction_type
-
-    # Check if the amount is type Decimal
-    amount_text = args.amount
     try:
-        amount = Decimal(amount_text)
-    except InvalidOperation:
-        parser.error("Amount must be a valid decimal number")
-
-    category = args.category
-    description = args.description
-
-    # Check the date to be a date
-    if args.date:
-        try:
-            transaction_date = date.fromisoformat(args.date)
-        except ValueError:
-            parser.error("date must use YYYY-MM-DD format")
-    else :
-        transaction_date = date.today()
-
-    # Create the transaction
-    try :
-        new_transaction = Transaction(
-            transaction_type=transaction_type,
-            amount=amount,
-            category=category,
-            transaction_date=transaction_date,
-            description=description,
-        )
-    except ValueError as error :
-       parser.error(str(error))
-
-    storage = SQLiteStorage(database)
-    ledger = Ledger(storage)
-    saved_transaction = ledger.add_transaction(new_transaction)
-
-    print(f'Added {saved_transaction.transaction_type} #{saved_transaction.id}: €{format(saved_transaction.amount,".2f")} in {saved_transaction.category} on {saved_transaction.transaction_date}.')
+        if args.command == "add":
+            add_command(args, ledger)
+        elif args.command == "list":
+            list_command(ledger)
+    except ValueError as error:
+        parser.error(str(error))
