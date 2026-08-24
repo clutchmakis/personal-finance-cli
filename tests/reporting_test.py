@@ -6,7 +6,8 @@ from pathlib import Path
 SRC_DIRECTORY = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(SRC_DIRECTORY))
 
-from finance.reporting import format_transaction_table
+from finance.ledger import Summary
+from finance.reporting import format_summary_table, format_transaction_table
 from finance.transaction import Transaction
 
 def make_transaction(**overrides) -> Transaction:
@@ -88,3 +89,82 @@ def test_formats_empty_description():
     assertion_string = head_string + string_1
 
     assert assertion_string == result
+
+
+def test_formats_empty_all_time_summary():
+    summary = Summary(
+        income=Decimal("0.00"),
+        expenses=Decimal("0.00"),
+        balance=Decimal("0.00"),
+        expense_categories=[],
+    )
+
+    result = format_summary_table(summary)
+
+    assert result == (
+        "All time\n"
+        "Income:   €0.00\n"
+        "Expenses: €0.00\n"
+        "Balance:  €0.00\n"
+        "\n"
+        "Expenses by category:\n"
+        "No expense categories."
+    )
+
+
+def test_formats_populated_all_time_summary():
+    summary = Summary(
+        income=Decimal("1500"),
+        expenses=Decimal("12.5"),
+        balance=Decimal("1487.5"),
+        expense_categories=[("food", Decimal("12.5"))],
+    )
+
+    result = format_summary_table(summary)
+
+    assert result == (
+        "All time\n"
+        "Income:   €1500.00\n"
+        "Expenses: €12.50\n"
+        "Balance:  €1487.50\n"
+        "\n"
+        "Expenses by category:\n"
+        "- food: €12.50"
+    )
+
+
+def test_formats_monthly_summary():
+    summary = Summary(
+        income=Decimal("1500.00"),
+        expenses=Decimal("12.50"),
+        balance=Decimal("1487.50"),
+        expense_categories=[("food", Decimal("12.50"))],
+    )
+
+    result = format_summary_table(summary, month="2026-07")
+
+    assert result == (
+        "Month: 2026-07\n"
+        "Income:   €1500.00\n"
+        "Expenses: €12.50\n"
+        "Balance:  €1487.50\n"
+        "\n"
+        "Expenses by category:\n"
+        "- food: €12.50"
+    )
+
+
+def test_summary_formatter_preserves_expense_category_order():
+    summary = Summary(
+        income=Decimal("100.00"),
+        expenses=Decimal("30.00"),
+        balance=Decimal("70.00"),
+        expense_categories=[
+            ("food", Decimal("10.00")),
+            ("travel", Decimal("20.00")),
+        ],
+    )
+
+    result = format_summary_table(summary)
+
+    assert result.index("- food: €10.00") < result.index("- travel: €20.00")
