@@ -1,7 +1,7 @@
+import sys
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-import sys
 
 SRC_DIRECTORY = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(SRC_DIRECTORY))

@@ -10,6 +10,7 @@ from finance.ledger import Summary
 from finance.reporting import format_summary_table, format_transaction_table
 from finance.transaction import Transaction
 
+
 def make_transaction(**overrides) -> Transaction:
     values = {
         "id": 1,

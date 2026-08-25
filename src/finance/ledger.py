@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from .transaction import Transaction
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
+
 from .storage import SQLiteStorage
+from .transaction import Transaction
 
 
 @dataclass
