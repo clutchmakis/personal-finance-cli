@@ -1,11 +1,17 @@
+from argparse import ArgumentParser, Namespace
 from datetime import date
-from .ledger import Ledger
+from decimal import Decimal, InvalidOperation
+
+from .ledger import Ledger, Summary
+from .reporting import format_summary_table, format_transaction_table
 from .storage import SQLiteStorage
 from .transaction import Transaction
-from .reporting import format_transaction_table
-from decimal import Decimal, InvalidOperation
-from argparse import ArgumentParser, Namespace
 
+
+def summary_command(args: Namespace, ledger:Ledger) -> None:
+    # There is no reason for us to check whether month exists as it is checked in ledger
+    summary: Summary = ledger.summary(args.month)
+    print(format_summary_table(summary,args.month))
 
 
 def list_command(args: Namespace, ledger: Ledger) -> None:
@@ -79,6 +85,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest ="command", required = True )
     add_parser = subparsers.add_parser("add")
     list_parser = subparsers.add_parser("list")
+    summary_parser = subparsers.add_parser("summary")
 
     # Create the arguments, the "_=" removes the warnings of something getting returned and not use it
     _ = add_parser.add_argument(
@@ -124,6 +131,10 @@ def main() -> None:
         help='List transactions until that day',
     )
 
+    _ = summary_parser.add_argument(
+        '--month',
+        help='Add the month for the summary to calculate'
+    )
     args : Namespace = parser.parse_args()
     ledger = Ledger(SQLiteStorage(args.database))
 
@@ -132,5 +143,7 @@ def main() -> None:
             add_command(args, ledger)
         elif args.command == "list":
             list_command(args, ledger)
+        elif args.command == "summary":
+            summary_command(args,ledger)
     except ValueError as error:
         parser.error(str(error))

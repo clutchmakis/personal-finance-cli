@@ -1,9 +1,11 @@
 import os
-import sys
 import subprocess
-from pathlib import Path
-from decimal import Decimal
+import sys
 from datetime import UTC, date
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).parents[1]
 SRC_DIRECTORY = PROJECT_ROOT / "src"
@@ -11,7 +13,6 @@ sys.path.insert(0, str(SRC_DIRECTORY))
 
 from finance.storage import SQLiteStorage
 from finance.transaction import Transaction
-
 
 
 def run_finance(*arguments: str) -> subprocess.CompletedProcess[str]:
@@ -544,3 +545,152 @@ def test_list_command_prints_empty_message_when_filters_match_nothing(tmp_path):
     assert result.returncode == 0
     assert result.stderr == ""
     assert result.stdout == "No transactions found.\n"
+
+def test_finance_database_summary(tmp_path):
+    database_path = tmp_path / "finance.db"
+    storage = SQLiteStorage(database_path)
+
+    transaction_income = Transaction(
+        transaction_type="income",
+        amount=Decimal("1500.00"),
+        category="salary",
+        description="monthly salary",
+        transaction_date=date(2026, 7, 10),
+    )
+
+    transaction_expense = Transaction(
+        transaction_type="expense",
+        amount=Decimal("12.50"),
+        category="food",
+        description="food_expense",
+        transaction_date=date(2026, 7, 10),
+    )
+
+    storage.save(transaction_income)
+    storage.save(transaction_expense)
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "summary"
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == (
+        "All time\n"
+        "Income:   €1500.00\n"
+        "Expenses: €12.50\n"
+        "Balance:  €1487.50\n"
+        "\n"
+        "Expenses by category:\n"
+        "- food: €12.50\n"
+    )
+
+
+def test_summary_command_filters_transactions_by_month(tmp_path):
+    database_path = tmp_path / "finance.db"
+    storage = SQLiteStorage(database_path)
+
+    storage.save(
+        Transaction(
+            transaction_type="income",
+            amount=Decimal("1500.00"),
+            category="salary",
+            description="July salary",
+            transaction_date=date(2026, 7, 10),
+        )
+    )
+    storage.save(
+        Transaction(
+            transaction_type="expense",
+            amount=Decimal("12.50"),
+            category="food",
+            description="July food",
+            transaction_date=date(2026, 7, 10),
+        )
+    )
+    storage.save(
+        Transaction(
+            transaction_type="expense",
+            amount=Decimal("100.00"),
+            category="transport",
+            description="August transport",
+            transaction_date=date(2026, 8, 1),
+        )
+    )
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "summary",
+        "--month",
+        "2026-07",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == (
+        "Month: 2026-07\n"
+        "Income:   €1500.00\n"
+        "Expenses: €12.50\n"
+        "Balance:  €1487.50\n"
+        "\n"
+        "Expenses by category:\n"
+        "- food: €12.50\n"
+    )
+
+
+def test_summary_command_prints_zero_totals_for_a_month_without_matches(tmp_path):
+    database_path = tmp_path / "finance.db"
+    storage = SQLiteStorage(database_path)
+    storage.save(
+        Transaction(
+            transaction_type="expense",
+            amount=Decimal("12.50"),
+            category="food",
+            description="July food",
+            transaction_date=date(2026, 7, 10),
+        )
+    )
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "summary",
+        "--month",
+        "2026-09",
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert result.stdout == (
+        "Month: 2026-09\n"
+        "Income:   €0.00\n"
+        "Expenses: €0.00\n"
+        "Balance:  €0.00\n"
+        "\n"
+        "Expenses by category:\n"
+        "No expense categories.\n"
+    )
+
+
+@pytest.mark.parametrize("month", ["2026-7", "2026-00", "2026-13", "hello"])
+def test_summary_command_rejects_invalid_months_without_a_traceback(
+    month,
+    tmp_path,
+):
+    database_path = tmp_path / "finance.db"
+
+    result = run_finance(
+        "--database",
+        str(database_path),
+        "summary",
+        "--month",
+        month,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert "month must be in yyyy-mm format" in result.stderr.lower()
+    assert "Traceback" not in result.stderr
