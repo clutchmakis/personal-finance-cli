@@ -1,9 +1,12 @@
 """Format finance domain values for terminal presentation."""
-
+import csv
 from decimal import Decimal
+from pathlib import Path
 
 from .ledger import Summary
 from .transaction import Transaction
+
+CSV_HEADER = ["id", "date", "type", "amount", "category", "description"]
 
 
 def format_transaction_table(transaction_list: list[Transaction]) -> str:
@@ -86,3 +89,37 @@ def format_summary_table(summary: Summary, month: str | None = None) -> str:
                 f'{expenses_categories}'
         )
         return string
+
+def transaction_to_row(transaction: Transaction) -> list[str] :
+
+    id_str = str(transaction.id)
+    amount_str = format(transaction.amount,".2f")
+    transaction_date = transaction.transaction_date.isoformat()
+
+    row_list: list[str] = [
+        id_str,
+        transaction_date,
+        transaction.transaction_type,
+        amount_str,
+        transaction.category,
+        transaction.description,
+
+    ]
+
+    return row_list
+
+def write_transactions_csv(
+    transactions: list[Transaction],
+    output_path: Path,
+) -> None:
+
+    with output_path.open(
+        "w",
+        encoding="utf-8",
+        newline="",
+    ) as csv_file:
+        writer = csv.writer(csv_file,lineterminator="\n")
+        writer.writerow(CSV_HEADER)
+        if transactions:
+            for transaction in transactions:
+                writer.writerow(transaction_to_row(transaction))

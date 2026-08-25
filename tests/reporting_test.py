@@ -7,9 +7,14 @@ SRC_DIRECTORY = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(SRC_DIRECTORY))
 
 from finance.ledger import Summary
-from finance.reporting import format_summary_table, format_transaction_table
+from finance.reporting import (
+    format_summary_table,
+    format_transaction_table,
+    write_transactions_csv,
+)
 from finance.transaction import Transaction
 
+EXPECTED_CSV_HEADER = "id,date,type,amount,category,description\n"
 
 def make_transaction(**overrides) -> Transaction:
     values = {
@@ -169,3 +174,99 @@ def test_summary_formatter_preserves_expense_category_order():
     result = format_summary_table(summary)
 
     assert result.index("- food: €10.00") < result.index("- travel: €20.00")
+
+
+def test_csv_empty_transactions(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transactions: list[Transaction] = []
+
+    write_transactions_csv(transactions, output_path)
+
+    result = output_path.read_text(encoding="utf-8")
+    assert result == EXPECTED_CSV_HEADER
+
+
+def test_csv_writes_one_transaction_with_exact_values(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transaction = make_transaction()
+
+    write_transactions_csv([transaction], output_path)
+
+    result = output_path.read_text(encoding="utf-8")
+    assert result == (
+        EXPECTED_CSV_HEADER
+        + "1,2026-07-13,income,100.00,salary,monthly salary\n"
+    )
+
+
+def test_csv_quotes_description_containing_comma(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transaction = make_transaction(description="Coffee, sandwich")
+
+    write_transactions_csv([transaction], output_path)
+
+    result = output_path.read_text(encoding="utf-8")
+    assert result == (
+        EXPECTED_CSV_HEADER
+        + '1,2026-07-13,income,100.00,salary,"Coffee, sandwich"\n'
+    )
+
+
+def test_csv_escapes_quotes_inside_description(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transaction = make_transaction(description='He said "hello"')
+
+    write_transactions_csv([transaction], output_path)
+
+    result = output_path.read_text(encoding="utf-8")
+    assert result == (
+        EXPECTED_CSV_HEADER
+        + '1,2026-07-13,income,100.00,salary,"He said ""hello"""\n'
+    )
+
+
+def test_csv_formats_amount_with_exactly_two_decimal_places(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transaction = make_transaction(amount=Decimal("12.5"))
+
+    write_transactions_csv([transaction], output_path)
+
+    result = output_path.read_text(encoding="utf-8")
+    assert result == (
+        EXPECTED_CSV_HEADER
+        + "1,2026-07-13,income,12.50,salary,monthly salary\n"
+    )
+
+
+def test_csv_writes_exact_utf8_bytes(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transaction = make_transaction(
+        category="καφές",
+        description="Café in Αθήνα",
+    )
+
+    write_transactions_csv([transaction], output_path)
+
+    result = output_path.read_bytes()
+    expected = (
+        EXPECTED_CSV_HEADER
+        + "1,2026-07-13,income,100.00,καφές,Café in Αθήνα\n"
+    ).encode("utf-8")
+    assert result == expected
+
+
+def test_csv_preserves_supplied_transaction_order(tmp_path: Path):
+    output_path = tmp_path / "transactions.csv"
+    transactions = [
+        make_transaction(id=2, description="second"),
+        make_transaction(id=1, description="first"),
+    ]
+
+    write_transactions_csv(transactions, output_path)
+
+    result = output_path.read_text(encoding="utf-8")
+    assert result == (
+        EXPECTED_CSV_HEADER
+        + "2,2026-07-13,income,100.00,salary,second\n"
+        + "1,2026-07-13,income,100.00,salary,first\n"
+    )
